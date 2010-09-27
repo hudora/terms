@@ -51,8 +51,8 @@ class AgreementForm(forms.Form):
         """Check the security hash."""
         security_hash_dict = {
             'user_pk' : self.data.get("user_pk", ""),
-            'timestamp' : self.data.get("timestamp", ""),
             'terms_pk' : self.data.get("terms_pk", ""),
+            'timestamp' : self.data.get("timestamp", ""),
         }
         expected_hash = self.generate_security_hash(**security_hash_dict)
         actual_hash = self.cleaned_data["security_hash"]
@@ -71,9 +71,9 @@ class AgreementForm(forms.Form):
         """Generate a dict of security data for "initial" data."""
         timestamp = int(time.time())
         security_dict =   {
-            'user'     : str(self.user._get_pk_val()),
-            'timestamp'     : str(timestamp),
+            'user_pk'       : str(self.user._get_pk_val()),
             'terms_pk'      : str(self.terms._get_pk_val()),
+            'timestamp'     : str(timestamp),
             'security_hash' : self.initial_security_hash(timestamp),
         }
         return security_dict
@@ -93,7 +93,7 @@ class AgreementForm(forms.Form):
 
     def generate_security_hash(self, user_pk, terms_pk, timestamp):
         """Generate a (SHA1) security hash from the provided info."""
-        info = (user_pk, timestamp, terms_pk, settings.SECRET_KEY)
+        info = (user_pk, terms_pk, timestamp, settings.SECRET_KEY)
         return sha_constructor("".join(info)).hexdigest()
 
     def get_agreement_object(self):
@@ -115,5 +115,4 @@ class AgreementForm(forms.Form):
         return dict(
             user_id  = force_unicode(self.user._get_pk_val()),
             terms_id = force_unicode(self.terms._get_pk_val()),
-            submit_date  = datetime.datetime.now(),
         )
