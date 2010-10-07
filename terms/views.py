@@ -6,7 +6,7 @@ Created by Christian Klein on 2010-09-27.
 Copyright (c) 2010 HUDORA. All rights reserved.
 """
 
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, Http404
 from django.shortcuts import render_to_response
 from django.template import RequestContext
 from terms.forms import AgreementForm
@@ -33,4 +33,18 @@ def agree(request):
     
     return render_to_response('terms/agree.html',
                               {'form': form, 'next': next, 'terms': terms},
+                              context_instance=RequestContext(request))
+
+def show(request, terms_pk=None, template_name='terms/show.html'):
+    """Show terms"""
+
+    try:
+        if terms_pk:
+            terms = Terms.objects.get(pk=terms_pk)
+        else:
+            terms = Terms.objects.latest()
+    except Terms.DoesNotExist:
+        raise Http404
+    
+    return render_to_response(template_name, {'terms': terms},
                               context_instance=RequestContext(request))
