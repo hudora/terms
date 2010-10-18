@@ -19,21 +19,21 @@ from django.utils.http import urlquote
 from terms.models import Agreement, Terms
 
 
-def check(user):
+def check(customer):
     """Check if a given instance agreed to the most recent terms"""
 
     try:
-        agreement = user.agreements.latest()
-    except user.agreements.model.DoesNotExist:
+        agreement = customer.agreements.latest()
+    except customer.agreements.model.DoesNotExist:
         return False
     return agreement.terms == Terms.objects.latest()
 
 
 def latest_terms_required(view_func):
-    """Decorator for views that checks that the user agreed to the latest terms."""
+    """Decorator for views that checks that the customer agreed to the latest terms."""
 
     def _wrapped_view(request, *args, **kwargs):
-        if check(request.user):
+        if check(request.customer):
             return view_func(request, *args, **kwargs)
         path = urlquote(request.get_full_path())
         tup = reverse('terms.agree'), path

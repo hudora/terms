@@ -6,6 +6,7 @@ Created by Christian Klein on 2010-09-22.
 Copyright (c) 2010 HUDORA. All rights reserved.
 """
 
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.core import urlresolvers
 from django.db import models
@@ -15,6 +16,7 @@ class Terms(models.Model):
     version = models.PositiveIntegerField(unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
     text = models.TextField()
+    active = models.BooleanField(default=True)
 
     class Meta:
         get_latest_by = 'version'
@@ -28,7 +30,7 @@ class Terms(models.Model):
 class Agreement(models.Model):
     """Agreement of <something> to a specific version of the terms"""
     
-    user = models.ForeignKey(User, related_name='agreements')
+    customer = models.ForeignKey(settings.TERMS_FOREIGNKEY_MODEL, related_name='agreements')
     terms = models.ForeignKey('Terms')
     created_at = models.DateTimeField(auto_now_add=True)
     

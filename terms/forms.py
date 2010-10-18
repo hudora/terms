@@ -23,15 +23,15 @@ class AgreementForm(forms.Form):
     Handles the security aspects (anti-spoofing) for agreement forms.
     """
     
-    user_pk     = forms.CharField(widget=forms.HiddenInput)
+    customer_pk     = forms.CharField(widget=forms.HiddenInput)
     terms_pk      = forms.CharField(widget=forms.HiddenInput)
     timestamp     = forms.IntegerField(widget=forms.HiddenInput)
     security_hash = forms.CharField(min_length=40, max_length=40, widget=forms.HiddenInput)
     
     accept = forms.BooleanField()
 
-    def __init__(self, user, terms, data=None, initial=None):
-        self.user = user
+    def __init__(self, customer, terms, data=None, initial=None):
+        self.customer = customer
         self.terms = terms
         if initial is None:
             initial = {}
@@ -50,7 +50,7 @@ class AgreementForm(forms.Form):
     def clean_security_hash(self):
         """Check the security hash."""
         security_hash_dict = {
-            'user_pk' : self.data.get("user_pk", ""),
+            'customer_pk' : self.data.get("customer_pk", ""),
             'terms_pk' : self.data.get("terms_pk", ""),
             'timestamp' : self.data.get("timestamp", ""),
         }
@@ -71,7 +71,7 @@ class AgreementForm(forms.Form):
         """Generate a dict of security data for "initial" data."""
         timestamp = int(time.time())
         security_dict =   {
-            'user_pk'       : str(self.user._get_pk_val()),
+            'customer_pk'       : str(self.customer._get_pk_val()),
             'terms_pk'      : str(self.terms._get_pk_val()),
             'timestamp'     : str(timestamp),
             'security_hash' : self.initial_security_hash(timestamp),
@@ -85,15 +85,15 @@ class AgreementForm(forms.Form):
         """
 
         initial_security_dict = {
-            'user_pk' : str(self.user._get_pk_val()),
+            'customer_pk' : str(self.customer._get_pk_val()),
             'terms_pk' : str(self.terms._get_pk_val()),
             'timestamp' : str(timestamp),
           }
         return self.generate_security_hash(**initial_security_dict)
 
-    def generate_security_hash(self, user_pk, terms_pk, timestamp):
+    def generate_security_hash(self, customer_pk, terms_pk, timestamp):
         """Generate a (SHA1) security hash from the provided info."""
-        info = (user_pk, terms_pk, timestamp, settings.SECRET_KEY)
+        info = (customer_pk, terms_pk, timestamp, settings.SECRET_KEY)
         return sha_constructor("".join(info)).hexdigest()
 
     def get_agreement_object(self):
@@ -113,6 +113,6 @@ class AgreementForm(forms.Form):
         """Returns the dict of data to be used to create an agreement."""
         
         return dict(
-            user_id  = force_unicode(self.user._get_pk_val()),
+            customer_id  = force_unicode(self.customer._get_pk_val()),
             terms_id = force_unicode(self.terms._get_pk_val()),
         )

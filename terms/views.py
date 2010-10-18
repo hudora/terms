@@ -17,10 +17,11 @@ def agree(request):
     
     next = request.REQUEST.get('next', '/')
     
+    qs = Terms.objects.filter(active=True)
     if 'terms_pk' in request.POST:
-        terms = Terms.objects.get(pk=request.POST.get('terms_pk'))
+        terms = qs.get(pk=request.POST.get('terms_pk'))
     else:
-        terms = Terms.objects.latest()
+        terms = qs.latest()
     
     if request.method == "POST":
         form = AgreementForm(request.user, terms, request.POST)
@@ -35,14 +36,16 @@ def agree(request):
                               {'form': form, 'next': next, 'terms': terms},
                               context_instance=RequestContext(request))
 
+
 def show(request, terms_pk=None, template_name='terms/show.html'):
     """Show terms"""
 
+    qs = Terms.objects.filter(active=True)
     try:
         if terms_pk:
-            terms = Terms.objects.get(pk=terms_pk)
+            terms = qs.get(pk=terms_pk)
         else:
-            terms = Terms.objects.latest()
+            terms = qs.latest()
     except Terms.DoesNotExist:
         raise Http404
     
