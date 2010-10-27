@@ -24,7 +24,7 @@ def agree(request):
         terms = qs.latest()
     
     if request.method == "POST":
-        form = AgreementForm(request.user, terms, request.POST)
+        form = AgreementForm(request.customer, terms, request.POST)
         if form.is_valid():
             agreement = form.get_agreement_object()
             agreement.save()
