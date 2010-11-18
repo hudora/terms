@@ -56,11 +56,18 @@ def latest_terms_required(handler_func):
 
     @wraps(handler_func)
     def _wrapper(self, *args, **kwargs):
-        request = self.request
-        kundennr = self.credential.empfaenger.kundennr
-        if not Agreement.has_agreed_to_latest(kundennr):
-            path = urllib.quote(self.request.path)
-            return self.redirect('/terms?next=%s' % path)
+        try:
+            request = self.request
+            kundennr = self.credential_empfaenger.kundennr
+            if not Agreement.has_agreed_to_latest(kundennr):
+                path = urllib.quote(self.request.path)
+                r= self.redirect('/terms?next=%s&kundennr=%s' % (path, kundennr))
+                return r
+        except Exception, ex:
+            # wenn wir noch keine Credentials vorliegen haben kann auch die
+            # Ueberpruefung nicht stattfinden, also koennen wir diesen Fall
+            # ignorieren
+            pass
         return handler_func(self, *args, **kwargs)
     return _wrapper
 
@@ -72,15 +79,16 @@ class AgreementHandler(BasicHandler):
         try:
             terms = Terms.get_latest()
             self.render({'terms': terms.text,
+                         'kundennr': self.request.GET['kundennr'],
                          'version': terms.version}, TERMS_TEMPLATE)
         except AttributeError:
             raise Exception('kein gueltiges (oder ein fehlerhaftes) TERMS_TEMPLATE in der config.py angegeben!')
 
     def post(self):
         """ ueberprueft, ob der Benutzer seine Zustimmung gegeben hat """
-        self.login_required()
-        kundennr = self.credential.empfaenger.kundennr
-        Agreement(kundennr=kundennr, terms=Terms.get_latest()).put()
+        kundennr = self.request.POST.get('kundennr')
+        if kundennr:
+            Agreement(kundennr=kundennr, terms=Terms.get_latest()).put()
         self.redirect('/')
 
 
