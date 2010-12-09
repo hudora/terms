@@ -78,7 +78,8 @@ class AgreementHandler(BasicHandler):
         self.login_required()
         try:
             terms = Terms.get_latest()
-            self.render({'terms': terms.text,
+            html = self.convert_markdown(terms.text)
+            self.render({'terms': html,
                          'kundennr': self.request.GET['kundennr'],
                          'version': terms.version}, TERMS_TEMPLATE)
         except AttributeError:
@@ -90,6 +91,19 @@ class AgreementHandler(BasicHandler):
         if kundennr:
             Agreement(kundennr=kundennr, terms=Terms.get_latest()).put()
         self.redirect('/')
+
+    def convert_markdown(self, markup):
+        """ versucht den uebergebenen String als Markdown-Text zu interpretieren und
+            dann das konvertierte HTML zurueckliefern. Im Fehlerfall wird der Eingabestring
+            zurueckgeliefert """
+        try:
+            from markdown import markdown
+            return markdown(markup)
+        except:
+            # wenn kein Markdown installiert ist oder andere Fehler auftauchen
+            # dann wird das reine Markup zurueckgegeben, damit zumindestens der
+            # eigentliche Text lesbar bleibt.
+            return markup.replace("\n", '</br>')
 
 
 def main():
