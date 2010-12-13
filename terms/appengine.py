@@ -28,6 +28,15 @@ class Terms(db.Model):
     text = db.TextProperty(required=True)
 
     @classmethod
+    def update(cls, text):
+        """ speichert eine neue Version der AGBs in der Datenbank """
+        latest = Terms.get_latest()
+        version = latest.version + 1 if latest else 1
+        terms = Terms(version=version,
+                      text=text)
+        terms.put()
+
+    @classmethod
     def get_latest(cls):
         """ liefert die neueste Version der AGBs zurueck """
         terms = cls.all().order('-created_at').fetch(1)
@@ -87,10 +96,29 @@ class AgreementHandler(BasicHandler):
 
     def post(self):
         """ ueberprueft, ob der Benutzer seine Zustimmung gegeben hat """
+        # wollen wir eine neue Terms-Version hochladen?
+        if self.request.path.endswith('/upload/'):
+            return self.handle_terms_upload()
+           
+        # oder doch nur eine Bestaetigung speichern?
         kundennr = self.request.POST.get('kundennr')
         if kundennr:
             Agreement(kundennr=kundennr, terms=Terms.get_latest()).put()
         self.redirect('/')
+
+    def handle_terms_upload(self):
+        """ speichert eine neue Version der AGBs. Um die Funktion moeglichst universell zu
+            halten (also unabhaengig von irgendwelchen Auth-Mechanismen der restlichen App)
+            und gleichzeitig ein bischen Sicherheit einzubauen erwarten wir per Basic Auth
+            ein hart kodiertes Token "Aevoes3H:wahQu2Xa", damit der Aufruf akzeptiert wird. """
+        auth = self.request.headers.get('Authorization')
+        self.response.headers["Content-Type"] = "application/json"
+        if auth != 'Basic QWV2b2VzM0g6d2FoUXUyWGE=':
+            self.error(403)
+        else:
+            text = unicode(self.request.body, 'utf-8')
+            Terms.update(text)
+            self.response.out.write('{"success": true}')
 
     def convert_markdown(self, markup):
         """ versucht den uebergebenen String als Markdown-Text zu interpretieren und
