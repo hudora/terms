@@ -5,6 +5,7 @@
 import config
 config.imported = True
 
+import os.path
 import logging
 import urllib
 from functools import update_wrapper, wraps
@@ -84,15 +85,25 @@ def latest_terms_required(handler_func):
 class AgreementHandler(BasicHandler):
     def get(self):
         """ zeigt das Formular mit den AGBs an und laesst den Benutzer bestaetigen """
-        self.login_required()
-        try:
+        # soll das showdown.js geladen werden?
+        if self.request.path.endswith('/showdown.js'):
+            self.response.headers["Content-Type"] = "application/javascript"
+            script = file(os.path.join(os.path.dirname(__file__), 'modified-showdown.js')).read()
+            self.response.out.write(script)
+
+        # oder der eigentliche anzuzeigende Text?
+        elif self.request.path.endswith('/text'):
             terms = Terms.get_latest()
-            html = self.convert_markdown(terms.text)
-            self.render({'terms': html,
-                         'kundennr': self.request.GET['kundennr'],
-                         'version': terms.version}, TERMS_TEMPLATE)
-        except AttributeError:
-            raise Exception('kein gueltiges (oder ein fehlerhaftes) TERMS_TEMPLATE in der config.py angegeben!')
+            self.response.headers["Content-Type"] = "text/plain"
+            self.response.out.write(terms.text)
+
+        # nein, Handling der eigentlichen Seite
+        else:
+            self.login_required()
+            try:
+                self.render({'kundennr': self.request.GET['kundennr']}, TERMS_TEMPLATE)
+            except AttributeError:
+                raise Exception('kein gueltiges (oder ein fehlerhaftes) TERMS_TEMPLATE in der config.py angegeben!')
 
     def post(self):
         """ ueberprueft, ob der Benutzer seine Zustimmung gegeben hat """
@@ -119,19 +130,6 @@ class AgreementHandler(BasicHandler):
             text = unicode(self.request.body, 'utf-8')
             Terms.update(text)
             self.response.out.write('{"success": true}')
-
-    def convert_markdown(self, markup):
-        """ versucht den uebergebenen String als Markdown-Text zu interpretieren und
-            dann das konvertierte HTML zurueckliefern. Im Fehlerfall wird der Eingabestring
-            zurueckgeliefert """
-        try:
-            from markdown import markdown
-            return markdown(markup)
-        except:
-            # wenn kein Markdown installiert ist oder andere Fehler auftauchen
-            # dann wird das reine Markup zurueckgegeben, damit zumindestens der
-            # eigentliche Text lesbar bleibt.
-            return markup.replace("\n", '</br>')
 
 
 def main():
