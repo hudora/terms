@@ -66,18 +66,16 @@ def latest_terms_required(handler_func):
 
     @wraps(handler_func)
     def _wrapper(self, *args, **kwargs):
-        try:
-            request = self.request
+        try:  # TODO: nicht besser 'if self.credential:'?
             kundennr = self.credential_empfaenger.kundennr
             if not Agreement.has_agreed_to_latest(kundennr):
                 path = urllib.quote(self.request.path)
-                r= self.redirect('/terms?next=%s&kundennr=%s' % (path, kundennr))
-                return r
+                self.redirect('/terms?next=%s&kundennr=%s' % (path, kundennr))
         except Exception, ex:
             # wenn wir noch keine Credentials vorliegen haben kann auch die
             # Ueberpruefung nicht stattfinden, also koennen wir diesen Fall
             # ignorieren
-            pass
+            logging.error(u'Exception in latest_terms_required: %s', ex)
         return handler_func(self, *args, **kwargs)
     return _wrapper
 
