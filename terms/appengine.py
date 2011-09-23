@@ -14,7 +14,7 @@ from google.appengine.ext.webapp import util
 from gaetk.handler import BasicHandler
 
 
-# wir stellen zuerst fest, in welches Template wir die Bestaetigung 
+# wir stellen zuerst fest, in welches Template wir die Bestaetigung
 # zu den aktuellen AGSs rendern sollen
 try:
     TERMS_TEMPLATE = config.TERMS_TEMPLATE
@@ -66,15 +66,29 @@ def latest_terms_required(handler_func):
 
     @wraps(handler_func)
     def _wrapper(self, *args, **kwargs):
-        if not (hasattr(self.request, 'credential') and self.request.credential):
+        if (not hasattr(self, 'credential') and
+            not (hasattr(self.request, 'credential') and self.request.credential)):
             # We decide to fail open instead of fail close
             # meaning htat if something is broken with finding the customer
             # we allow access WITHOUT agreeing to the Terms & conditions.
-            logging.error("request has no 'credential' attribute")
+            logging.error("request or self has no 'credential' attribute")
         else:
-            if not Agreement.has_agreed_to_latest(request.credential.key().id_or_name()):
+            # die Terms sollen immer nur einmal pro Kunde bestaetigt werden muessen,
+            # deshalb brauchen wir die Kundennummern. Da dazu aber recht viel Wissen ueber
+            # den Aufbau der (EDIhub-spezifischen) Credentials notwendig ist versuchen wir
+            # sehr konservativ darauf zuzugreifen, um das Terms-Modul nicht zu sehr an
+            # EDIhub zu binden. Wenn es irgendwo schiefgeht wird einfach der Benutzername
+            # als Key genutzt, dann muss jeder Benutzer einzeln bestaetigen, das er die Terms
+            # gelesen hat
+            credentials = self.credential if hasattr(self, 'credential') else self.request.credential
+            agreement_key = credentials.key().id_or_name()
+            if hasattr(credentials, 'empfaenger'):
+                if hasattr(credentials.empfaenger, 'kundennr'):
+                    agreement_key = credentials.empfaenger.kundennr
+
+            if not Agreement.has_agreed_to_latest(agreement_key):
                 path = urllib.quote(self.request.path)
-                self.redirect('/terms?next=%s&kundennr=%s' % (path, kundennr))
+                return self.redirect('/terms?next=%s&kundennr=%s' % (path, agreement_key))
         return handler_func(self, *args, **kwargs)
     return _wrapper
 
@@ -107,12 +121,13 @@ class AgreementHandler(BasicHandler):
         # wollen wir eine neue Terms-Version hochladen?
         if self.request.path.endswith('/upload/'):
             return self.handle_terms_upload()
-           
+
         # oder doch nur eine Bestaetigung speichern?
         kundennr = self.request.POST.get('kundennr')
         if kundennr:
             Agreement(kundennr=kundennr, terms=Terms.get_latest()).put()
-        self.redirect('/')
+        redirection_path = self.request.POST.get('next', '/')
+        self.redirect(redirection_path)
 
     def handle_terms_upload(self):
         """ speichert eine neue Version der AGBs. Um die Funktion moeglichst universell zu
