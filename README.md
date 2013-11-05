@@ -12,3 +12,7 @@ Beispiel:
 
 
 
+
+
+[![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/hudora/terms/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
+
